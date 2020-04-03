@@ -83,20 +83,26 @@
 
 
 
-<meta name="description" content="一直都想填的一个坑，之前也想写文章记录一下，由于太忙了水了水就过去了，昨天又遇到了相关的情况，并且很多问题也是之前没有理解清楚的，特此记录一番。 &#x2F;&#x2F; 刚好作为每天水文。 0x00标题为Mysql任意读取客户端文件，拆分一下，关键词为Mysql和客户端以及如何实现任意读取的问题。 Mysql会涉及到一个版本的问题，不同版本特性差异，比如4.x可能就没有记录数据库名、表名和列名的informatio">
+<meta name="description" content="一直都想填的一个坑，之前也想写文章记录一下，由于太忙了水了水就过去了，昨天又遇到了相关的情况，并且很多问题也是之前没有理解清楚的，特此记录一番。 &#x2F;&#x2F; 刚好作为每天水文。 0x00 原理标题为Mysql任意读取客户端文件，拆分一下，关键词为Mysql和客户端以及如何实现任意读取的问题。 Mysql会涉及到一个版本的问题，不同版本特性差异，比如4.x可能就没有记录数据库名、表名和列名的informa">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Mysql任意读取客户端文件">
 <meta property="og:url" content="http://a1ne.github.io/2020/03/31/Mysql%E4%BB%BB%E6%84%8F%E8%AF%BB%E5%8F%96%E5%AE%A2%E6%88%B7%E7%AB%AF%E6%96%87%E4%BB%B6/index.html">
 <meta property="og:site_name" content="Breezy&#39;s Blog">
-<meta property="og:description" content="一直都想填的一个坑，之前也想写文章记录一下，由于太忙了水了水就过去了，昨天又遇到了相关的情况，并且很多问题也是之前没有理解清楚的，特此记录一番。 &#x2F;&#x2F; 刚好作为每天水文。 0x00标题为Mysql任意读取客户端文件，拆分一下，关键词为Mysql和客户端以及如何实现任意读取的问题。 Mysql会涉及到一个版本的问题，不同版本特性差异，比如4.x可能就没有记录数据库名、表名和列名的informatio">
+<meta property="og:description" content="一直都想填的一个坑，之前也想写文章记录一下，由于太忙了水了水就过去了，昨天又遇到了相关的情况，并且很多问题也是之前没有理解清楚的，特此记录一番。 &#x2F;&#x2F; 刚好作为每天水文。 0x00 原理标题为Mysql任意读取客户端文件，拆分一下，关键词为Mysql和客户端以及如何实现任意读取的问题。 Mysql会涉及到一个版本的问题，不同版本特性差异，比如4.x可能就没有记录数据库名、表名和列名的informa">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/adminer.png">
 <meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/table.png">
 <meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/read.png">
 <meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/server.png">
+<meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/greet.png">
+<meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/init.png">
+<meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/select.png">
+<meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/response.png">
+<meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/send.png">
+<meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/official.png">
 <meta property="og:image" content="http://a1ne.github.io/images/mysql_arbitrary_read/protocol.png">
 <meta property="article:published_time" content="2020-04-01T00:04:00.000Z">
-<meta property="article:modified_time" content="2020-04-01T16:06:09.135Z">
+<meta property="article:modified_time" content="2020-04-03T00:30:48.676Z">
 <meta property="article:author" content="Breezy">
 <meta property="article:tag" content="RedTeam">
 <meta name="twitter:card" content="summary">
@@ -311,7 +317,7 @@
 
       
         <p>一直都想填的一个坑，之前也想写文章记录一下，由于太忙了水了水就过去了，昨天又遇到了相关的情况，并且很多问题也是之前没有理解清楚的，特此记录一番。 // 刚好作为每天水文。</p>
-<h2 id="0x00"><a href="#0x00" class="headerlink" title="0x00"></a>0x00</h2><p>标题为Mysql任意读取客户端文件，拆分一下，关键词为Mysql和客户端以及如何实现任意读取的问题。</p>
+<h2 id="0x00-原理"><a href="#0x00-原理" class="headerlink" title="0x00 原理"></a>0x00 原理</h2><p>标题为Mysql任意读取客户端文件，拆分一下，关键词为Mysql和客户端以及如何实现任意读取的问题。</p>
 <p>Mysql会涉及到一个版本的问题，不同版本特性差异，比如<code>4.x</code>可能就没有记录数据库名、表名和列名的information_schema表，而高版本的还可能加入了<code>secure_file_priv</code>这种让你读写两难的设置。针对某些版本可能并没有任意读取的特性，而针对一些版本又可能默认设置为<code>OFF</code></p>
 <p>客户端是因为Mysql为C/S模式的程序，直接通过<code>systemctl start mysql</code>启动的是服务端，开启后可以看到指定监听端口是开放状态，通过msyql客户端对其进行连接<code>mysql -u root -p -h 127.0.0.1 -P 3306</code>,从而操作服务端对数据进行<code>CRUD</code>(这里说的有点笼统，其实各种支持Mysql连接的语言，都有各自对应的客户端扩展)。</p>
 <p>任意读取涉及到一个特殊的用法<code>load data</code>,从<a href="https://dev.mysql.com/doc/refman/8.0/en/load-data.html" target="_blank" rel="noopener">官方文档</a>可以看出来该用法是为了高速读取文件数据并将其插入到数据表中，与<code>select data into outfile</code>相反。一般而言<code>load data</code>读取的文件是命令执行者本地的文件，比如客户端发起请求需要读取<code>/etc/passwd</code>,这时候读取到的就是服务端的<code>/etc/passwd</code>。</p>
@@ -322,9 +328,9 @@
 </blockquote>
 <p>因为平时都是直接使用客户端授权去连接服务端操作，默认环境是客户端可控，这个用法其实很正常，并且对于一些数据的备份转移很有帮助。</p>
 <blockquote>
-<p>load data local infile语法需要mysql客户端版本在5.1以上<br>可以通过语句show variables like “%local%”; 查看是否开启</p>
+<p>load data local infile语法需要mysql版本在5.1以上<br>可以通过语句show variables like “%local%”; 查看是否开启  不支持可以在连接的时候加上–enable-local-infile</p>
 </blockquote>
-<h2 id="0x01"><a href="#0x01" class="headerlink" title="0x01"></a>0x01</h2><p>在实际情况中，很多网站为了方便远程管理并防止Mysql端口直接暴露，通常会使用一种类似PhpMyAdmin的管理工具,这种管理工具即使作为客户端去管理服务器。如果支持外联，攻击者可以伪造数据库服务器提供连接，在其中执行上述语句对本地的文件(客户端文件)进行读取并插入到表中。</p>
+<h2 id="0x01-复现"><a href="#0x01-复现" class="headerlink" title="0x01 复现"></a>0x01 复现</h2><p>在实际情况中，很多网站为了方便远程管理并防止Mysql端口直接暴露，通常会使用一种类似PhpMyAdmin的管理工具作为客户端去管理服务器。如果支持外联，攻击者可以伪造数据库服务器提供连接，在其中执行上述语句对本地的文件(客户端文件)进行读取并插入到表中。</p>
 <p>本地搭建adminer(版本需要在4.3.1到4.6.2间)进行复现<br><img src="/images/mysql_arbitrary_read/adminer.png" alt="adminer"><br>在mysql服务器上需要开启外连</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;etc&#x2F;mysql&#x2F;mariadb.conf.d&#x2F;50-server.cnf   修改bind-address 为0.0.0.0</span><br><span class="line">本地连接数据库</span><br><span class="line">use mysql;</span><br><span class="line">update user set host&#x3D;&quot;%&quot; where user&#x3D;&quot;root&quot;;</span><br><span class="line">service mysql restart </span><br><span class="line"></span><br><span class="line">新版的mysql认证方式默认为unix_socket，只允许默认的root用户从本地进行连接</span><br><span class="line">udpate user set plugin&#x3D;&quot;mysql_native_password&quot; where user&#x3D;&quot;root&quot;</span><br><span class="line">update user set authentication_string&#x3D;password(&#39;123456&#39;) where user&#x3D;&#39;root&#39;;</span><br><span class="line">flush privileges;</span><br></pre></td></tr></table></figure>
 <p>由于adminer是使用php的mysql客户端扩展进行连接，需要在<code>php.ini</code>中修改如下设置</p>
@@ -340,14 +346,32 @@
 <p>修改命令</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">load data infile &quot;&#x2F;etc&#x2F;1&quot; into table test;</span><br></pre></td></tr></table></figure>
 
-<p><img src="/images/mysql_arbitrary_read/server.png" alt="server"><br>此时即是正常的读取文件的用法</p>
-<h2 id="0x02"><a href="#0x02" class="headerlink" title="0x02"></a>0x02</h2><p>在有的时候文件内容存在特殊字符，在读取的时候就会出现空格截断或者读取不出的情况，一个解决思路是添加多个字段来存放空格分格后的内容，或者通过替换将特殊字符变成能够支持的字符，还有就是对文件内容进行编码。</p>
+<p><img src="/images/mysql_arbitrary_read/server.png" alt="server"><br>此时即是正常的读取文件的用法<br><strong>抓包</strong><br>第一步能够看到服务器向客户端发送自己的banner信息以及认证的方式</p>
+<p><img src="/images/mysql_arbitrary_read/greet.png" alt="greet"></p>
+<p>然后进行用户登录及初始化查询</p>
+<p><img src="/images/mysql_arbitrary_read/init.png" alt="init"><br>客户端发起查询请求</p>
+<p><img src="/images/mysql_arbitrary_read/select.png" alt="select"><br>服务端收到请求后会回复客户端请求的文件名</p>
+<p><img src="/images/mysql_arbitrary_read/response.png" alt="response"><br>随后客户端会读取对应文件内容发送给服务端</p>
+<p><img src="/images/mysql_arbitrary_read/send.png" alt="send"><br><strong>简化</strong><br>上述整体过程就是</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">客户端请求，服务端回复banner和登录信息</span><br><span class="line">客户端根据服务端回复发送登录数据,服务端校验响应</span><br><span class="line">客户端发起初始化查询(一个或多个，需要看基于的初始化环境，每次web端的查询都相当于与服务器交互一次)，服务端相应执行语句并返回结果</span><br><span class="line">客户端发送load data local infile 请求，服务端提取文件名回复文件读取请求</span><br><span class="line">客户端读取对应文件内容发送到服务端</span><br></pre></td></tr></table></figure>
+<p>从官方文档中了解到，客户端是不会储存自身请求的，而是通过服务端的响应来执行操作，也就是无条件信任服务端，并且文件传送请求可以作为任意查询语句的响应</p>
+<p><img src="/images/mysql_arbitrary_read/official.png" alt="officel"><br>因此上述过程可以改变为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">客户端请求，服务端回复banner和登录要求</span><br><span class="line">客户端按照对应类型构造自身登录数据发送给服务端,服务端校验响应</span><br><span class="line">客户端发起初始化查询，服务端回复文件读取请求</span><br><span class="line">客户端读取对应文件内容发送到服务端</span><br></pre></td></tr></table></figure>
+<p>整个过程在客户端主动的情况下均可控，因此可以编写一个恶意服务器监听实现文件读取</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Loading</span><br></pre></td></tr></table></figure>
+<h2 id="0x02-扩展"><a href="#0x02-扩展" class="headerlink" title="0x02 扩展"></a>0x02 扩展</h2><p>在有的时候文件内容存在特殊字符，读取过程中会出现空格截断或者读取不出的情况，一个解决思路是添加多个字段来存放空格分格后的内容，或者通过替换将特殊字符变成能够支持的字符，还有就是对文件内容进行编码。</p>
 <p>如果是mysql客户端，最常见的用法就是hex编码，在上述语法中。明显不支持hex函数的加入，看似能够替换的<code>replace</code>关键字实际上是针对读取数据主键重复的处理。一般而言就需要采取多个字段自动分隔的手段。</p>
 <p>鉴于上述是通过php的扩展实现，猜测读取文件可能是通过<code>file_get_contents()</code>之类的函数实现，而php是支持很多协议的<code>php,phar,zlib</code>等。可以通过各种协议的加入实现编码效果。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">测试过程第一步可以简单实用file协议读取，优先判断扩展是否支持协议</span><br></pre></td></tr></table></figure>
-<p>这里直接使用伪协议进行读取</p>
-<p><img src="/images/mysql_arbitrary_read/protocol.png" alt="protocol"><br>读取内容解密</p>
+<p>这里直接使用伪协议进行读取<br><img src="/images/mysql_arbitrary_read/protocol.png" alt="protocol"><br>读取内容解密</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">d2ViX3NlcnZlcgo&#x3D;</span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&gt;</span><br><span class="line">web_server</span><br></pre></td></tr></table></figure>
+<p>其他的类型如下，均存在任意读取问题</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">MySQL Client</span><br><span class="line">PHP + mysql&#x2F;mysqli</span><br><span class="line">PHP + PDO (MYSQL_ATTR_LOCAL_INFILE)</span><br><span class="line">Python + MySQLdb</span><br><span class="line">Python3 + mysqlclient</span><br><span class="line">Java + JDBC Driver</span><br></pre></td></tr></table></figure>
+<p>至于利用方式则需要看不同语言环境的支持情况.而且攻防其实是可以相互转化的，在攻击者对你进行扫描的时候，某些条件下可以伪装mysql服务器向其发送精简的payload读取任意文件。</p>
+<h2 id="0x03-修复"><a href="#0x03-修复" class="headerlink" title="0x03 修复"></a>0x03 修复</h2><p>最简单的就是在客户端禁用掉对应的用法，或者对服务端进行校验，如果只是为了管理本地数据库，可以禁止外连。</p>
+<blockquote>
+<p>参考<br>Read MySQL Client’s File [<a href="https://lightless.me/archives/read-mysql-client-file.html]" target="_blank" rel="noopener">https://lightless.me/archives/read-mysql-client-file.html]</a><br>CSS-T | Mysql Client 任意文件读取攻击链拓展  [<a href="https://www.freebuf.com/vuls/225420.html]" target="_blank" rel="noopener">https://www.freebuf.com/vuls/225420.html]</a><br>Load data local infile packet format[<a href="https://dev.mysql.com/doc/internals/en/com-query-response.html]" target="_blank" rel="noopener">https://dev.mysql.com/doc/internals/en/com-query-response.html]</a><br>Greeting packet format [<a href="https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake]" target="_blank" rel="noopener">https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake]</a></p>
+</blockquote>
 
       
     </div>
@@ -381,6 +405,10 @@
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2020/04/02/%E5%8D%8F%E8%AE%AEtips/" rel="prev" title="协议tips">
+                协议tips <i class="fa fa-chevron-right"></i>
+              </a>
             
           </div>
         </div>
@@ -457,7 +485,7 @@
               
                 <a href="/archives/%20%7C%7C%20archive">
               
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
@@ -501,7 +529,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#0x00"><span class="nav-number">1.</span> <span class="nav-text">0x00</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x01"><span class="nav-number">2.</span> <span class="nav-text">0x01</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x02"><span class="nav-number">3.</span> <span class="nav-text">0x02</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#0x00-原理"><span class="nav-number">1.</span> <span class="nav-text">0x00 原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x01-复现"><span class="nav-number">2.</span> <span class="nav-text">0x01 复现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x02-扩展"><span class="nav-number">3.</span> <span class="nav-text">0x02 扩展</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0x03-修复"><span class="nav-number">4.</span> <span class="nav-text">0x03 修复</span></a></li></ol></div>
             
 
           </div>
